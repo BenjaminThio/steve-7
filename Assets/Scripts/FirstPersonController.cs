@@ -50,7 +50,7 @@ public class FirstPersonController : MonoBehaviour
 
     // Player Props
     private Vector3 movement;
-    private float pitch;
+    // private float pitch;
     private float yaw;
     private int crouchTweenId = -1;
     private bool isCrouching;
