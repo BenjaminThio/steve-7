@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -21,7 +22,7 @@ public class FirstPersonController : MonoBehaviour
 
     [Header("Player Component References")]
     [SerializeField] private CharacterController characterController;
-    [SerializeField] private GameObject head;
+    [SerializeField] private Camera head;
 
     [Header("Player Properties")]
     [SerializeField] private float baseSpeed = 7f;
@@ -31,7 +32,8 @@ public class FirstPersonController : MonoBehaviour
     [SerializeField] private float gravityMultiplier = 1f;
     [SerializeField] private float mouseSensitivity = 0.1f;
     [SerializeField] private float crouchingDuration = 0.1f;
-    
+    [SerializeField] private float rayDistance = 5f;
+
     [Header("Camera Heights")]
     [SerializeField] private float standingViewHeight = 0.8f;
     [SerializeField] private float crouchingViewHeight = 0f;
@@ -50,7 +52,7 @@ public class FirstPersonController : MonoBehaviour
 
     // Player Props
     private Vector3 movement;
-    // private float pitch;
+    private float pitch;
     private float yaw;
     private int crouchTweenId = -1;
     private bool isCrouching;
@@ -60,6 +62,8 @@ public class FirstPersonController : MonoBehaviour
     private bool isForwardHeld;
     private bool waitForSecondForwardTap;
     private float lastForwardTapTime;
+
+    private GameObject prevHitObject = null;
 
     private void Awake()
     {
@@ -96,6 +100,45 @@ public class FirstPersonController : MonoBehaviour
         HandleMovement();
         HandleRotation();
         HandleCrouch();
+
+        Ray ray = new(head.transform.position, head.transform.forward);
+        Debug.DrawRay(head.transform.position, head.transform.forward * rayDistance, Color.red);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, rayDistance))
+        {
+            GameObject hitObject = hit.collider.gameObject;
+            
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (hitObject.CompareTag("PianoFallboard"))
+                {
+                    hitObject.GetComponent<Fallboard>().ToggleState();
+                }
+            }
+            else if (Input.GetMouseButton(0))
+            {
+                if (hitObject.CompareTag("PianoKey"))
+                {
+                    hitObject.GetComponent<Key>().Press();
+                }
+            }
+            else if (Input.GetMouseButtonUp(0))
+            {
+                if (hitObject.CompareTag("PianoKey"))
+                {
+                    hitObject.GetComponent<Key>().Release();
+                }
+            }
+
+            if (prevHitObject != hitObject)
+            {
+                if (prevHitObject != null && prevHitObject.CompareTag("PianoKey"))
+                {
+                    prevHitObject.GetComponent<Key>().Release();
+                }
+                prevHitObject = hitObject;
+            }
+        }
     }
 
     private void HandleSprint()
@@ -202,10 +245,10 @@ public class FirstPersonController : MonoBehaviour
     private void HandleRotation()
     {
         yaw += rotationInput.x * mouseSensitivity;
-        // pitch = Mathf.Clamp(pitch - rotationInput.y * mouseSensitivity, -VERTICAL_VIEW_RANGE, VERTICAL_VIEW_RANGE);
+        pitch = Mathf.Clamp(pitch - rotationInput.y * mouseSensitivity, -VERTICAL_VIEW_RANGE, VERTICAL_VIEW_RANGE);
 
         transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-        // head.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        head.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
     private void OnEnable()
